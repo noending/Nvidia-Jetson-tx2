@@ -1,0 +1,86 @@
+
+This file explains the installation of the auvidea kernel and dtbs via Jetpack 3.2
+NOTE: please replace ~ with the path to the folder 
+
+1. Backup following files from the Jetpack folder
+	~/Jetpack_3.2/64_TX2/Linux_for_Tegra_tx2/p2771-0000.conf.common
+	~/Jetpack_3.2/64_TX2/Linux_for_Tegra_tx2/kernel/kernel_headers.tbz2
+	~/Jetpack_3.2/64_TX2/Linux_for_Tegra_tx2/kernel/kernel_supplements.tbz2
+	~/Jetpack_3.2/64_TX2/Linux_for_Tegra_tx2/kernel/Image
+	~/Jetpack_3.2/64_TX2/Linux_for_Tegra_tx2/kernel/zImage
+	~/Jetpack_3.2/64_TX2/Linux_for_Tegra_tx2/kernel/dtb/tegra186-quill-p3310-1000-a00-00-base.dtb
+	~/Jetpack_3.2/64_TX2/Linux_for_Tegra_tx2/kernel/dtb/tegra186-quill-p3310-1000-a00-00-ucm1.dtb
+	~/Jetpack_3.2/64_TX2/Linux_for_Tegra_tx2/kernel/dtb/tegra186-quill-p3310-1000-a00-00-ucm2.dtb
+	~/Jetpack_3.2/64_TX2/Linux_for_Tegra_tx2/kernel/dtb/tegra186-quill-p3310-1000-c03-00-base.dtb
+	~/Jetpack_3.2/64_TX2/Linux_for_Tegra_tx2/kernel/dtb/tegra186-quill-p3310-1000-c03-00-dsi-hdmi-dp.dtb
+
+2. Use the following commands to copy the necessary files into the Jetpack folder
+	cp ~/auvidea_TX2_Jetpack/dtb/* ~/Jetpack_3.2/64_TX2/Linux_for_Tegra_tx2/kernel/dtb/
+	cp ~/auvidea_TX2_Jetpack/packages/* ~/Jetpack_3.2/64_TX2/Linux_for_Tegra_tx2/kernel/
+	cp ~/auvidea_TX2_Jetpack/p2771-0000.conf.common ~/Jetpack_3.2/64_TX2/Linux_for_Tegra_tx2/
+	cp ~/auvidea_TX2_Jetpack/Image ~/Jetpack_3.2/64_TX2/Linux_for_Tegra_tx2/kernel/
+	cp ~/auvidea_TX2_Jetpack/zImage ~/Jetpack_3.2/64_TX2/Linux_for_Tegra_tx2/kernel/
+
+3. Apply changes and flash the TX2
+	cd ~/Jetpack_3.2/64_TX2/Linux_for_Tegra_tx2/
+	./apply_binaries.sh
+	cd ~/Jetpack_3.2/
+	./JetPack-L4T-3.2-linux-x64_b196.run
+
+4. Follow the instruction and of the installation
+	Select Development Environment
+	-> Jetson TX2
+
+	when the Jetpack L4T Component Manager opens
+	-> press "Clear Actions"-Button in the right corner
+	-> chose "Flash OS Image to Target" under "Target-Jetson TX2" by clicking on "no action" and change it to "install 28.1.0"
+	-> under "Install on Target" choose the packages like needed, for example "Multimedia API package" if gstreamer is needed
+	-> when finished press "Next"
+	-> Accept all
+	-> follow the instructions until a console window opens
+	-> follow the instructions in the console(bring the TX2 into recovery mode) and press "ENTER"
+	-> wait until the flash process has finished and you are prompted to close the console window
+	-> close the console window and follow the menus in the Jetpack window until it closes.
+
+5. Using IMU on TX2
+	TX1 is using spidev3.0 for the IMU.
+	TX2 is using spidev1.0 for the IMU.
+
+	Change SPI device in RTIMULibDemoGL for TX2:
+
+	found in QT creator project at
+		*/RTIMULib/Sources/RTIMUHal.cpp
+
+	Change line 53 and 54 in file "RTIMUHal.cpp" from
+		m_SPIBus = 3;
+		m_SPISelect = 0;
+	to
+		m_SPIBus = 1;
+		m_SPISelect = 0;
+
+	Change line 78 in file "RTIMUHal.cpp" from
+		sprintf(buf, "/dev/spidev%d.%d", m_SPIBus, m_SPISelect);
+	to
+		sprintf(buf, "/dev/spidev1.0");
+
+
+
+6. Using native CAN on TX2
+	1. load kernel modules for CAN:
+		sudo modprobe can
+		sudo modprobe can_raw
+		sudo modprobe mttcan
+	2. set up CAN interface:
+		sudo ip link set up can0 type can bitrate 1000000		
+
+	3. load modules at startup 
+		- open the file /etc/modules with a text editor(for example vi, nano or gedit)
+		- add the kernel modules below the exiting ones(only one per 
+
+
+known issues:
+	- It seems that one of the used kernel modules creates two interfaces, which will show up in the Network manager of the Linux
+	system as not managed Ethernet devices. This bug has only be see with Jetpack 3.2. We are currently trying to find out which
+	module cause this and if it can by removed. 
+	A similar bug is described here:
+	https://askubuntu.com/questions/828850/device-not-managed-after-upgrade-to-ubuntu-16
